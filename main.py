@@ -13,9 +13,6 @@ def write_json(data, filename):
 	with open(f'{filename}.json', 'w') as f:
 		json.dump(data, f, indent=4)
 
-async def send_json(ctx, filename):
-	await ctx.send(f'```json\n{json.dumps(open_json(filename), indent=4)}```')
-
 
 bot = commands.Bot(
 	command_prefix='!',
@@ -53,8 +50,6 @@ async def github(ctx, url):
 	settings = open_json('settings')
 	settings["github"] = url
 	write_json(settings, 'settings')
-
-	await send_json(ctx, 'settings')
 
 
 @bot.command()
