@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 
 import json
+import requests
 
 
 def open_json(filename):
@@ -56,25 +57,29 @@ async def github(ctx, url):
 	await send_json(ctx, 'settings')
 
 
-@settings.command()
-async def webhook(ctx, url):
+@bot.command()
+async def update(ctx, channel: discord.TextChannel):
 	settings = open_json('settings')
-	settings["webhook"] = url
-	write_json(settings, 'settings')
+	github_url = settings["github"]
 
-	await send_json(ctx, 'settings')
+	webhooks = await channel.webhooks()
+	webhook = webhooks[0]
 
+	r = requests.get(github_url)
+	data = json.loads(r.text)
 
-@settings.command()
-async def channel(ctx, guild_id, channel_id):
-	settings = open_json('settings')
-	if "channel" not in settings:
-		settings["channel"] = {}
-	settings["channel"]["guild_id"] = guild_id
-	settings["channel"]["channel_id"] = channel_id
-	write_json(settings, 'settings')
+	embeds = [discord.Embed.from_dict(i) for i in data["embeds"]]
 
-	await send_json(ctx, 'settings')
+	async for message in webhook.channel.history(limit=None):
+		await message.delete()
 
+	await webhook.send(
+		content=data["content"],
+		username=data["username"],
+		avatar_url=data["avatar_url"],
+		embeds=embeds
+	)
+
+	await ctx.send('Updated!')
 
 bot.run(config["token"])
