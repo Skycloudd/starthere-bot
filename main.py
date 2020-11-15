@@ -19,8 +19,7 @@ bot = commands.Bot(
 	intents=discord.Intents.default()
 )
 
-with open('config.json', 'r') as f:
-	config = json.load(f)
+config = open_json('config')
 
 
 @bot.event
