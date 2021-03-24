@@ -7,9 +7,12 @@ import requests
 from utility_functions import *
 
 
+DEBUG = False
+
+
 bot = commands.Bot(
-	command_prefix='!',
-	intents=discord.Intents.default()
+    command_prefix='!',
+    intents=discord.Intents.default()
 )
 
 config = open_json('config')
@@ -17,56 +20,61 @@ config = open_json('config')
 
 @bot.event
 async def on_ready():
-	game = discord.Game("updating #start-here")
-	await bot.change_presence(activity=game, status=discord.Status.online)
-	print('Ready')
+    game = discord.Game("updating #start-here")
+    await bot.change_presence(activity=game, status=discord.Status.online)
+    print('Ready')
 
 
 @bot.event
 async def on_message(message):
-	app_info = await bot.application_info()
+    app_info = await bot.application_info()
 
-	if message.author.id != app_info.owner.id:
-		return
+    if message.author.id != app_info.owner.id:
+        return
 
-	await bot.process_commands(message)
+    await bot.process_commands(message)
 
 
 @bot.group()
 async def settings(ctx):
-	pass
+    pass
 
 
 @settings.command()
 async def github(ctx, url):
-	settings = open_json('settings')
-	settings["github"] = url
-	write_json(settings, 'settings')
+    settings = open_json('settings')
+    settings["github"] = url
+    write_json(settings, 'settings')
 
 
 @bot.command()
 async def update(ctx, channel: discord.TextChannel):
-	settings = open_json('settings')
-	github_url = settings["github"]
+    if not DEBUG:
+        settings = open_json('settings')
+        github_url = settings["github"]
 
-	webhooks = await channel.webhooks()
-	webhook = webhooks[0]
+    webhooks = await channel.webhooks()
+    webhook = webhooks[0]
+    if not DEBUG:
+        r = requests.get(github_url)
+        data = json.loads(r.text)
+    else:
+        with open('starthere.json', 'r') as f:
+            data = json.load(f)
 
-	r = requests.get(github_url)
-	data = json.loads(r.text)
+    embeds = [discord.Embed.from_dict(i) for i in data["embeds"]]
 
-	embeds = [discord.Embed.from_dict(i) for i in data["embeds"]]
+    if not DEBUG:
+        async for message in webhook.channel.history(limit=None):
+            await message.delete()
 
-	async for message in webhook.channel.history(limit=None):
-		await message.delete()
+    await webhook.send(
+        content=data["content"],
+        username=data["username"],
+        avatar_url=data["avatar_url"],
+        embeds=embeds
+    )
 
-	await webhook.send(
-		content=data["content"],
-		username=data["username"],
-		avatar_url=data["avatar_url"],
-		embeds=embeds
-	)
-
-	await ctx.send('Updated!')
+    await ctx.send('Updated!')
 
 bot.run(config["token"])
